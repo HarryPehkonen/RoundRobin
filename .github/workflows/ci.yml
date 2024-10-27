@@ -1,0 +1,132 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {
+              name: "Ubuntu Latest GCC",
+              os: ubuntu-latest,
+              compiler: gcc,
+              cc: gcc,
+              cxx: g++
+            }
+          - {
+              name: "Ubuntu Latest Clang",
+              os: ubuntu-latest,
+              compiler: clang,
+              cc: clang,
+              cxx: clang++
+            }
+          - {
+              name: "macOS Latest Clang",
+              os: macos-latest,
+              compiler: clang,
+              cc: clang,
+              cxx: clang++
+            }
+          - {
+              name: "Windows Latest MSVC",
+              os: windows-latest,
+              compiler: msvc,
+              cc: cl,
+              cxx: cl
+            }
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential
+        if [ "${{ matrix.config.compiler }}" = "clang" ]; then
+          sudo apt-get install -y clang
+        fi
+
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install cmake
+        if [ "${{ matrix.config.compiler }}" = "gcc" ]; then
+          brew install gcc
+        fi
+
+    - name: Configure CMake
+      shell: bash
+      run: |
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        else
+          cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_C_COMPILER=${{matrix.config.cc}} -DCMAKE_CXX_COMPILER=${{matrix.config.cxx}}
+        fi
+
+    - name: Build
+      shell: bash
+      run: cmake --build build --config ${{env.BUILD_TYPE}}
+
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      run: ctest -C ${{env.BUILD_TYPE}} --output-on-failure
+
+    # Optional: Run memory checks (Linux only)
+    - name: Memory Check
+      if: runner.os == 'Linux' && matrix.config.compiler == 'gcc'
+      shell: bash
+      run: |
+        sudo apt-get install -y valgrind
+        cd build
+        ctest -T memcheck
+
+    # Optional: Code coverage (Linux/GCC only)
+    - name: Code Coverage
+      if: runner.os == 'Linux' && matrix.config.compiler == 'gcc'
+      shell: bash
+      run: |
+        sudo apt-get install -y lcov
+        lcov --capture --directory . --output-file coverage.info
+        lcov --remove coverage.info '/usr/*' --output-file coverage.info
+        lcov --list coverage.info
+
+    - name: Upload coverage to Codecov
+      if: runner.os == 'Linux' && matrix.config.compiler == 'gcc'
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.info
+        fail_ci_if_error: false
+
+  sanitizers:
+    name: Sanitizers
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Configure CMake with Sanitizers
+      run: |
+        cmake -B build_asan -DCMAKE_BUILD_TYPE=Debug -DENABLE_ASAN=ON
+        cmake -B build_ubsan -DCMAKE_BUILD_TYPE=Debug -DENABLE_UBSAN=ON
+
+    - name: Build with Sanitizers
+      run: |
+        cmake --build build_asan
+        cmake --build build_ubsan
+
+    - name: Test with Sanitizers
+      run: |
+        cd build_asan && ctest --output-on-failure
+        cd ../build_ubsan && ctest --output-on-failure
