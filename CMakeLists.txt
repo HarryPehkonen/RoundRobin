@@ -11,6 +11,12 @@ option(ENABLE_ASAN "Enable AddressSanitizer" ON)
 # Enable code coverage by default
 option(ENABLE_COVERAGE "Enable code coverage" ON)
 
+if(ENABLE_ASAN)
+    set(MEMORYCHECK_COMMAND "/usr/bin/valgrind")
+    set(MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full --errors-for-leak-kinds=definite,indirect --error-exitcode=1")
+    set(MEMORYCHECK_SUPPRESSIONS_FILE "${CMAKE_SOURCE_DIR}/tests/valgrind.supp")
+endif()
+
 # Add a custom target for generating the coverage report
 add_custom_target(coverage
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/coverage_report
