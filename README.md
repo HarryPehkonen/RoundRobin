@@ -4,8 +4,8 @@ To use this in other projects:
 include(FetchContent)
 FetchContent_Declare(
     round_robin
-    GIT_REPOSITORY https://github.com/HarryPehkonen/round_robin.git
-    GIT_TAG v1.0.0
+    GIT_REPOSITORY https://github.com/HarryPehkonen/RoundRobin.git
+    GIT_TAG v0.1.0
 )
 FetchContent_MakeAvailable(round_robin)
 

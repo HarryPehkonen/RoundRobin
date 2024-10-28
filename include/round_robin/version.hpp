@@ -6,14 +6,14 @@ namespace rr {
  * @brief Version information for the RoundRobin library
  */
 struct Version {
-    static constexpr int major = 1;
-    static constexpr int minor = 0;
+    static constexpr int major = 0;
+    static constexpr int minor = 1;
     static constexpr int patch = 0;
     
     /**
      * @brief Get version string in format "MAJOR.MINOR.PATCH"
      */
-    static constexpr const char* string = "1.0.0";
+    static constexpr const char* string = "0.1.0";
     
     /**
      * @brief Get git commit hash if built from git, empty string otherwise
